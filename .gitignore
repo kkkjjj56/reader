@@ -12,3 +12,5 @@ public/
 !samples/
 !samples/河边散记-UTF8.txt
 !samples/山间来信-GB18030.txt
+.vercel
+.env*
