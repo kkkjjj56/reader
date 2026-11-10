@@ -1,4 +1,38 @@
 import { test, expect } from '@playwright/test';
+test('AI 密钥只保留在页面会话，并可更换', async ({page}) => {
+  const keys = [];
+  await page.route('**/api/explain', route => {
+    keys.push(route.request().headers()['x-deepseek-key']);
+    return route.fulfill({json:{answer:'解释示例'}});
+  });
+  await page.goto('/');
+  await upload(page, '测试.txt', '第一段测试文字。');
+  await page.getByRole('button', {name:'AI 助手', exact:true}).click();
+  await expect(page.locator('#ai-config')).toBeVisible();
+  await page.locator('#ai-api-key').fill('test-key-1');
+  await page.getByRole('button', {name:'进入 AI 助手'}).click();
+  await expect(page.locator('#ai-panel')).toBeVisible();
+  const selectText = () => page.locator('#content p').first().evaluate(el => {
+    const range = document.createRange(); range.selectNodeContents(el);
+    const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+  });
+  await selectText();
+  await page.getByRole('button', {name:'✦ AI 解释'}).click();
+  await expect(page.locator('#ai-answer')).toHaveText('解释示例');
+  expect(keys).toEqual(['test-key-1']);
+  expect(await page.evaluate(() => JSON.stringify({...localStorage, ...sessionStorage}))).not.toContain('test-key-1');
+  await page.getByRole('button', {name:'更换密钥'}).click();
+  await page.locator('#ai-api-key').fill('test-key-2');
+  await page.getByRole('button', {name:'进入 AI 助手'}).click();
+  await selectText();
+  await page.getByRole('button', {name:'✦ AI 解释'}).click();
+  await expect.poll(() => keys.length).toBe(2);
+  expect(keys[1]).toBe('test-key-2');
+  await page.reload();
+  await page.getByRole('button', {name:'AI 助手', exact:true}).click();
+  await expect(page.locator('#ai-config')).toBeVisible();
+  await expect(page.locator('#ai-api-key')).toHaveValue('');
+});
 test('书名、前后文与连续追问', async ({page}) => {
   const requests = [];
   await page.route('**/api/explain', route => { requests.push(route.request().postDataJSON()); return route.fulfill({json:{answer:'可能指乙，依据是前文甲遇见乙。'}}); });
@@ -7,6 +41,8 @@ test('书名、前后文与连续追问', async ({page}) => {
   const select = () => page.locator('#content p').nth(1).evaluate(el => { const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); });
   await select();
   await page.getByRole('button', {name:'✦ AI 解释'}).click();
+  await page.locator('#ai-api-key').fill('test-key');
+  await page.getByRole('button', {name:'进入 AI 助手'}).click();
   await expect(page.locator('#ai-answer')).toContainText('可能指乙');
   expect(requests[0].title).toBe('第一本');
   expect(requests[0].context.excerpts[0].text).toContain('甲遇见乙');
@@ -45,6 +81,8 @@ test('选文解释、失败重试、边界和会话清理', async ({page}) => {
     const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
   });
   await page.getByRole('button', {name:'✦ AI 解释'}).click();
+  await page.locator('#ai-api-key').fill('test-key');
+  await page.getByRole('button', {name:'进入 AI 助手'}).click();
   await expect(page.locator('#ai-selection')).toHaveText('第11段：窗外的');
   await expect(page.locator('#ai-answer')).toContainText('测试网络失败');
   await page.getByRole('button', {name:'重试', exact:true}).click();

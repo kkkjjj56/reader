@@ -39,17 +39,9 @@ python -m http.server 8000 --bind 127.0.0.1
 
 ### DeepSeek 本机配置
 
-使用此功能需要 Node.js 20 或更新版本、网络及有调用额度的 DeepSeek API 账户。请在 [DeepSeek API 平台](https://platform.deepseek.com/) 创建密钥，在自己电脑的项目目录打开 PowerShell，通过安全输入为当前终端设置；不要将密钥发到聊天里：
+使用此功能需要 Node.js 20 或更新版本、网络及有调用额度的 DeepSeek API 账户。请在 [DeepSeek API 平台](https://platform.deepseek.com/) 创建自己的 API Key，启动阅读器，打开一本书后点击“AI 助手”，在弹窗中输入密钥。也可以选中文字后点击“AI 解释”，首次使用时同样会显示配置窗口。
 
-```powershell
-$secret = Read-Host '请输入 DeepSeek API Key' -AsSecureString
-$credential = [System.Management.Automation.PSCredential]::new('local', $secret)
-$env:DEEPSEEK_API_KEY = $credential.GetNetworkCredential().Password
-Remove-Variable secret, credential
-npm start
-```
-
-先关闭占用 8000 端口的旧服务，再在设置密钥的同一 PowerShell 窗口运行 `npm start`，并保持该窗口运行。此设置只对当前 PowerShell 进程及其子进程生效；关闭终端后需重新输入。密钥仍存在运行中进程的环境变量中，请保护本机账户。使用 AI 时按输入和输出 token 计费，系统指令也计入输入；每次点击或重试可能产生费用。价格与账户额度以 [DeepSeek 官方定价](https://api-docs.deepseek.com/quick_start/pricing/) 为准。终止页面请求不能保证已发出的模型调用不计费。
+密钥只保留在当前网页内存，刷新或关闭页面后需要重新输入。AI 面板中的“更换密钥”可更换当前密钥。每次请求会把密钥发送给本机阅读器服务，再由服务请求固定的 DeepSeek 官方接口；不要将密钥发到聊天里。使用 AI 时按输入和输出 token 计费，每次点击或重试可能产生费用。价格与账户额度以 [DeepSeek 官方定价](https://api-docs.deepseek.com/quick_start/pricing/) 为准。
 
 AI 功能需要本项目的 `npm start` 或启动脚本；Python 静态服务只能使用基础阅读功能。
 
@@ -108,7 +100,7 @@ npm run test:browser
 
 滚动后进度同步，页面显示“已同步”代表服务端已确认；断网时会显示失败并提供重试。发生双设备冲突时，可选择云端进度或保留本机进度。删除云书会删除对应云端正文及进度。请在共享电脑使用后退出登录，注意浏览器可能保留待同步数据。
 
-另一台设备需要获得此项目代码并安装 Node.js，启动 `npm start`，访问该设备自己的 `http://127.0.0.1:8000/`；在其浏览器填写同一项目的公开 URL 与 Publishable key，用同一账号登录。当前服务只监听本机，未公开部署；两台设备需联网访问 Supabase，不能用一台设备的 `127.0.0.1` 直接访问另一台。设置与 AI 配置仍按设备保存：AI 需要在该设备的运行终端配置 DeepSeek Key。
+另一台设备需要获得此项目代码并安装 Node.js，启动 `npm start`，访问该设备自己的 `http://127.0.0.1:8000/`；在其浏览器填写同一项目的公开 URL 与 Publishable key，用同一账号登录。当前服务只监听本机，未公开部署；两台设备需联网访问 Supabase，不能用一台设备的 `127.0.0.1` 直接访问另一台。阅读设置按设备保存；AI Key 需在每个浏览器页面会话中单独输入。
 
 2026-11-10 使用随机测试账号和自编文本完成真实 Supabase 测试：注册登录、两账号书籍与进度访问隔离、上传下载和删除、独立浏览器会话恢复进度、进度冲突与幂等、断网提示及恢复后重试。测试文本已删除；随机测试账号仍在 Supabase Auth。两台实体设备之间的访问未实测。云书选文与 AI 面板使用模拟模型响应测试，未进行真实 DeepSeek 调用。请勿把这些结果理解为已完成公开部署或生产环境安全审计。
 

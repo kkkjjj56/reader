@@ -43,6 +43,7 @@ test('错误原因安全映射，不暴露上游响应或密钥', async () => {
 });
 test('本机接口校验来源、内容和缺失密钥', async () => {
   const oldKey = process.env.DEEPSEEK_API_KEY;
+  const oldFetch = globalThis.fetch;
   delete process.env.DEEPSEEK_API_KEY;
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   try {
@@ -59,9 +60,16 @@ test('本机接口校验来源、内容和缺失密钥', async () => {
     assert.equal(missing.status, 503);
     assert.match((await missing.json()).error, /未配置/);
     assert.equal((await send({text:'一段选文'}, {Origin:'http://evil.example'})).status, 403);
+    let receivedKey;
+    globalThis.fetch = async (_url, options) => { receivedKey = options.headers.Authorization; return {ok:true, json:async () => ({choices:[{message:{content:'解释'}}]})}; };
+    const userResponse = await send({text:'一段选文'}, {'X-DeepSeek-Key':'test-user-key'});
+    assert.equal(userResponse.status, 200);
+    assert.equal(receivedKey, 'Bearer test-user-key');
+    assert.doesNotMatch(JSON.stringify(await userResponse.json()), /test-user-key/);
     assert.equal((await send({text:'一段选文', extra:'全文'})).status, 400);
     assert.equal((await send({text:'文'.repeat(2001)})).status, 400);
   } finally {
+    globalThis.fetch = oldFetch;
     await new Promise(resolve => server.close(resolve));
     if (oldKey === undefined) delete process.env.DEEPSEEK_API_KEY; else process.env.DEEPSEEK_API_KEY = oldKey;
   }

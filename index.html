@@ -32,11 +32,22 @@
   <aside id="ai-panel" class="ai-panel" aria-label="AI 辅助阅读" hidden>
     <div class="ai-heading"><div><span class="eyebrow">READING COMPANION</span><h2>AI 辅助阅读</h2></div><button id="ai-close" aria-label="关闭 AI 面板">✕</button></div>
     <p class="ai-intro">选中正文中的一段文字，再点击“AI 解释”。</p>
-    <div class="ai-badge">DeepSeek · 选文解释</div>
+    <div class="ai-badge">DeepSeek · 选文解释 <button id="ai-change-key" type="button">更换密钥</button></div>
     <div class="ai-body"><label><input id="ai-spoilers" type="checkbox"> 允许使用选文之后的内容（可能剧透）</label><p class="ai-intro">结合书名、选文及附近正文；模型使用已有知识，不联网搜索。</p><div id="ai-selection-wrap" hidden><h3>选中的文字</h3><blockquote id="ai-selection"></blockquote></div><h3>解释</h3><p id="ai-answer" class="ai-answer" role="status" aria-live="polite">选择一段文字，开始阅读。</p><div id="ai-chat" aria-live="polite"></div><button id="ai-retry" hidden>重试</button></div>
     <form id="ai-chat-form" class="ai-chat-form"><label for="ai-question">继续提问</label><textarea id="ai-question" rows="2" maxlength="1000" placeholder="针对选中的内容继续提问" disabled></textarea><button id="ai-send" type="submit" disabled>发送</button></form>
     <p class="ai-foot">书名、选文、附近正文和对话会发送至 DeepSeek，调用可能产生费用。回答可能有误或剧透。对话在关闭页面后清空。</p>
   </aside>
+  <dialog id="ai-config" class="cloud-dialog" aria-labelledby="ai-config-title">
+    <form id="ai-config-form">
+      <h2 id="ai-config-title">配置 AI 助手</h2>
+      <p>输入你自己的 DeepSeek API Key，用于本次浏览器页面会话。</p>
+      <label for="ai-api-key">DeepSeek API Key</label>
+      <input id="ai-api-key" type="password" autocomplete="off" spellcheck="false" required maxlength="256" placeholder="输入 API Key">
+      <p>密钥仅保留在当前页面内存中；使用 AI 时会经本应用服务端发送至 DeepSeek。关闭或刷新页面后需重新输入，调用费用由你的 API 账户承担。</p>
+      <p id="ai-config-error" role="status" aria-live="polite"></p>
+      <div class="cloud-actions"><button id="ai-config-cancel" type="button">取消</button><button type="submit">进入 AI 助手</button></div>
+    </form>
+  </dialog>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>

@@ -25,7 +25,9 @@ export const server = http.createServer(async (req, res) => {
       if (!data || typeof data.text !== 'string' || !data.text.trim() || data.text.length > 2000 || Object.keys(data).some(key => !['text','context','title','history','allowSpoilers'].includes(key))) return send(400, { error: '请求正文无效或超出长度限制。' });
       if (data.context && (typeof data.context !== 'object' || JSON.stringify(data.context).length > 50000)) return send(400, { error: '上下文过长。' });
       if ((data.title !== undefined && (typeof data.title !== 'string' || data.title.length > 500)) || (data.allowSpoilers !== undefined && typeof data.allowSpoilers !== 'boolean') || (data.history !== undefined && (!Array.isArray(data.history) || data.history.length > 12 || data.history.some(m => !m || !['user','assistant'].includes(m.role) || typeof m.content !== 'string' || m.content.length > 4000 || Object.keys(m).some(k => !['role','content'].includes(k)))))) return send(400, {error:'书名或对话内容无效。'});
-      const result = await explainText(data.text, process.env.DEEPSEEK_API_KEY, fetch, data.context, data.title, data.history, data.allowSpoilers);
+      const userKey = req.headers['x-deepseek-key'];
+      if (userKey !== undefined && (typeof userKey !== 'string' || !/^[\x21-\x7e]{1,256}$/.test(userKey))) return send(400, { error: 'API Key 格式无效，请重新输入。' });
+      const result = await explainText(data.text, userKey || process.env.DEEPSEEK_API_KEY, fetch, data.context, data.title, data.history, data.allowSpoilers);
       return send(result.status, result.answer ? { answer: result.answer } : { error: result.error });
     }
     const target = path.resolve(root, '.' + (pathname === '/' ? '/index.html' : pathname));

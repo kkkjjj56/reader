@@ -45,6 +45,32 @@ export class ReaderApp {
   bindEvents() {
     const explain = document.getElementById('ai-explain');
     const panel = document.getElementById('ai-panel');
+    const config = document.getElementById('ai-config');
+    const keyInput = document.getElementById('ai-api-key');
+    const configError = document.getElementById('ai-config-error');
+    let pendingAiAction = null;
+    const withAiKey = action => {
+      if (this.aiApiKey) return action();
+      pendingAiAction = action;
+      keyInput.value = '';
+      configError.textContent = '';
+      if (!config.open) config.showModal();
+      keyInput.focus();
+    };
+    document.getElementById('ai-config-cancel').onclick = () => { pendingAiAction = null; keyInput.value = ''; config.close(); };
+    config.addEventListener('cancel', () => { pendingAiAction = null; keyInput.value = ''; });
+    document.getElementById('ai-config-form').onsubmit = event => {
+      event.preventDefault();
+      const key = keyInput.value.trim();
+      if (!/^[\x21-\x7e]{1,256}$/.test(key)) { configError.textContent = '请输入有效的 API Key，请勿包含空格或换行。'; return; }
+      this.aiApiKey = key;
+      keyInput.value = '';
+      config.close();
+      const action = pendingAiAction;
+      pendingAiAction = null;
+      action?.();
+    };
+    document.getElementById('ai-change-key').onclick = () => { this.aiApiKey = null; withAiKey(() => {}); };
     this.aiSelected = null;
     const readSelection = () => {
       const selection = window.getSelection();
@@ -53,9 +79,10 @@ export class ReaderApp {
     };
     document.addEventListener('selectionchange', () => { const text = readSelection(); if (text) this.aiSelected = text; else if (!panel.contains(document.activeElement) && document.activeElement !== explain) this.aiSelected = null; });
     explain.addEventListener('pointerdown', () => { this.aiSelected = readSelection() || this.aiSelected; });
-    explain.onclick = () => this.run(async () => {
+    explain.onclick = () => {
       const selected = readSelection() || this.aiSelected;
       const text = selected?.text || '';
+      const execute = () => this.run(async () => {
       await this.changeLayout(() => { panel.hidden = false; }, false);
       const answer = document.getElementById('ai-answer');
       const selectionWrap = document.getElementById('ai-selection-wrap');
@@ -73,8 +100,10 @@ export class ReaderApp {
         this.requestExplanation(text);
       }
       this.aiSelected = null;
-    });
-    document.getElementById('ai-open').onclick = () => this.run(() => this.changeLayout(() => { panel.hidden = false; }, false));
+      });
+      if (text && text.length <= 2000) withAiKey(execute); else execute();
+    };
+    document.getElementById('ai-open').onclick = () => withAiKey(() => this.run(() => this.changeLayout(() => { panel.hidden = false; }, false)));
     document.getElementById('ai-retry').onclick = () => this.requestExplanation(document.getElementById('ai-selection').textContent, this.aiPendingQuestion || '');
     document.getElementById('ai-chat-form').onsubmit = event => {
       event.preventDefault();
@@ -328,7 +357,7 @@ export class ReaderApp {
       const allowSpoilers = document.getElementById('ai-spoilers').checked;
       const context = buildContext(fullText(this.current), this.aiCurrentSelection, null, allowSpoilers);
       const history = [...this.aiHistory, ...(question ? [{role:'user', content:question}] : [])].slice(-12);
-      const response = await fetch('/api/explain', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({text, context, title:this.current.title, history, allowSpoilers}), signal: controller.signal });
+      const response = await fetch('/api/explain', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-DeepSeek-Key': this.aiApiKey || '' }, body: JSON.stringify({text, context, title:this.current.title, history, allowSpoilers}), signal: controller.signal });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || `请求失败（HTTP ${response.status}）。`);
       if (this.aiController === controller) {
