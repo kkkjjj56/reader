@@ -1,20 +1,26 @@
 import { TxtImporter } from './TxtImporter.js';
 import { ReaderView } from './ReaderView.js';
 import { LibraryStore } from './LibraryStore.js';
+import { ReaderSettings } from './ReaderSettings.js';
 
 export class ReaderApp {
   constructor() {
     this.importer = new TxtImporter();
     this.view = new ReaderView();
     this.store = new LibraryStore();
+    this.settings = new ReaderSettings();
     this.books = [];
+    this.unsaved = new Set();
     this.current = null;
     this.saving = Promise.resolve();
     this.restoring = false;
     this.working = false;
   }
   async start() {
+    this.view.applySettings(this.settings);
     this.bindEvents();
+    this.working = true;
+    this.view.busy(true);
     this.view.message('正在打开书架…');
     try {
       await this.store.open();
@@ -26,6 +32,9 @@ export class ReaderApp {
       else this.view.message('书架已就绪，选择或导入一本书');
     } catch {
       this.view.message('书架暂时无法读取，仍可导入阅读；保存失败时请重试或刷新。', true);
+    } finally {
+      this.working = false;
+      this.view.busy(false);
     }
   }
   bindEvents() {
@@ -57,10 +66,56 @@ export class ReaderApp {
     document.getElementById('retry-save').onclick = () => this.run(async () => {
       if (!this.store.db) await this.store.open();
       if (this.pendingDelete) await this.finishDelete(...this.pendingDelete);
-      for (const book of this.books.filter(item => item !== this.current)) await this.store.save(book);
+      for (const book of this.books.filter(item => item !== this.current)) {
+        await this.store.save(book);
+        this.unsaved.delete(book.id);
+      }
       await this.persist();
     });
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.flush(); });
+    for (const [id, delta] of [['font-down', -2], ['font-up', 2]]) {
+      document.getElementById(id).onclick = () => this.run(() => this.changeLayout(() => this.settings.resize(delta)));
+    }
+    document.getElementById('theme-toggle').onclick = () => this.run(() => this.changeLayout(() => this.settings.toggleTheme()));
+    const shelfToggle = document.getElementById('shelf-toggle');
+    const toggleShelf = () => {
+      document.body.classList.toggle('shelf-hidden');
+      shelfToggle.setAttribute('aria-expanded', String(!document.body.classList.contains('shelf-hidden')));
+    };
+    if (window.innerWidth <= 700) toggleShelf();
+    shelfToggle.onclick = () => this.run(() => this.changeLayout(toggleShelf, false));
+    let resizeTimer;
+    const restoreAfterResize = () => {
+      if (this.working) { resizeTimer = setTimeout(restoreAfterResize, 50); return; }
+      this.run(() => this.changeLayout(() => {}, false));
+    };
+    window.addEventListener('resize', () => {
+      clearTimeout(resizeTimer);
+      this.restoring = true;
+      resizeTimer = setTimeout(restoreAfterResize, 150);
+    });
+  }
+  async changeLayout(change, saveSettings = true) {
+    // 使用上次记录的段落定位，避免窗口重排后的像素位置覆盖原位置。
+    const position = this.current ? { ...this.current.position } : null;
+    this.restoring = true;
+    change();
+    this.view.applySettings(this.settings);
+    this.view.busy(true);
+    let settingsError = false;
+    if (saveSettings) {
+      try { this.settings.save(); }
+      catch { settingsError = true; }
+    }
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    if (position) this.view.restorePosition(position);
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    this.restoring = false;
+    if (this.current) { this.capture(); await this.flush(); }
+    if (saveSettings) {
+      if (settingsError) this.view.message('设置已应用，但无法保存；请检查浏览器存储权限。', true);
+      else if (document.getElementById('retry-save').hidden) this.view.message('阅读设置已保存');
+    }
   }
   async run(action) {
     if (this.working) return;
@@ -104,10 +159,13 @@ export class ReaderApp {
     this.saving = this.saving.then(async () => {
       try {
         await this.store.save(book);
-        this.view.message('已保存 · 阅读进度保存在此浏览器');
-        document.getElementById('retry-save').hidden = !this.pendingDelete;
+        this.unsaved.delete(book.id);
+        const pending = this.pendingDelete || this.unsaved.size > 0;
+        this.view.message(pending ? '当前进度已保存，仍有操作未保存，请重试。' : '已保存 · 阅读进度保存在此浏览器', Boolean(pending));
+        document.getElementById('retry-save').hidden = !pending;
         this.renderShelf();
       } catch {
+        this.unsaved.add(book.id);
         this.view.message('未保存：浏览器存储不可用或空间不足。可重试保存。', true);
         document.getElementById('retry-save').hidden = false;
       }
@@ -126,6 +184,7 @@ export class ReaderApp {
   async finishDelete(id, currentId) {
     await this.store.remove(id, currentId);
     this.books = this.books.filter(item => item.id !== id);
+    this.unsaved.delete(id);
     if (this.current?.id === id) { this.current = null; this.view.showBook(null); }
     this.pendingDelete = null;
     document.getElementById('retry-save').hidden = true;

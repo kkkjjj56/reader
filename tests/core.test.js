@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TxtImporter } from '../js/TxtImporter.js';
 import { Book } from '../js/Book.js';
+import { ReaderSettings } from '../js/ReaderSettings.js';
 
 test('导入中文、BOM、换行和纯文本标签', async () => {
   const file = new File(['\ufeff第一章\r\n\r\n<script>文字</script>'], '测试.txt');
@@ -28,4 +29,16 @@ test('位置边界与对象独立性', () => {
   assert.equal(a.progress, 100);
   assert.deepEqual(b.position, { index: 0, ratio: 0 });
   assert.notEqual(a.id, b.id);
+});
+test('设置损坏恢复默认、范围约束及保存失败', () => {
+  const storage = { getItem: () => '{broken', setItem: () => { throw new Error('空间不足'); } };
+  const settings = new ReaderSettings(storage);
+  assert.equal(settings.fontSize, 20);
+  settings.resize(100);
+  assert.equal(settings.fontSize, 32);
+  settings.resize(-100);
+  assert.equal(settings.fontSize, 14);
+  settings.toggleTheme();
+  assert.equal(settings.theme, 'dark');
+  assert.throws(() => settings.save(), /空间不足/);
 });

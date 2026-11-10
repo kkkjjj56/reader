@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test",
+    "test": "node --test tests/core.test.js",
+    "test:browser": "playwright test",
     "start": "node server.js"
   },
   "devDependencies": {

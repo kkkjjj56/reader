@@ -77,6 +77,21 @@ export class ReaderView {
   }
   busy(value) {
     for (const element of document.querySelectorAll('#import-button, #welcome-import, #encoding, .open-book, .delete-book, #retry-save')) element.disabled = value;
+    document.getElementById('font-down').disabled = value || Number(document.getElementById('font-size').textContent) <= 14;
+    document.getElementById('font-up').disabled = value || Number(document.getElementById('font-size').textContent) >= 32;
+    document.getElementById('theme-toggle').disabled = value;
+    document.getElementById('shelf-toggle').disabled = value;
+  }
+  applySettings(settings) {
+    document.body.dataset.theme = settings.theme;
+    document.documentElement.style.setProperty('--font-size', `${settings.fontSize}px`);
+    document.getElementById('font-size').textContent = settings.fontSize;
+    document.getElementById('font-down').disabled = settings.fontSize <= 14;
+    document.getElementById('font-up').disabled = settings.fontSize >= 32;
+    const toggle = document.getElementById('theme-toggle');
+    toggle.textContent = settings.theme === 'light' ? '☾ 深色' : '☀ 浅色';
+    toggle.setAttribute('aria-pressed', String(settings.theme === 'dark'));
+    toggle.setAttribute('aria-label', settings.theme === 'light' ? '切换深色主题' : '切换浅色主题');
   }
   message(text, error = false) {
     this.status.textContent = text;
