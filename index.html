@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>一页 · TXT 阅读器</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="./" aria-label="一页阅读器首页"><span class="brand-mark">页</span><span>一页<small>给文字一点时间</small></span></a>
+    <div class="shelf-heading"><h2>我的书架</h2><span id="book-count">0 本</span></div>
+    <div id="library" class="library"><p class="shelf-empty">书架还是空的。<br>导入一本书，从这一页开始。</p></div>
+    <div class="sidebar-foot"><span class="local-dot"></span> 书籍仅保存在此浏览器</div>
+  </aside>
+  <main class="main">
+    <header class="toolbar">
+      <button id="shelf-toggle" class="icon-button" aria-label="展开或收起书架" aria-expanded="true" aria-controls="sidebar">☰</button>
+      <div class="breadcrumb">我的阅读空间 <span>/</span> <span id="toolbar-title">开始阅读</span></div>
+      <div class="import-tools"><label for="encoding" class="sr-only">TXT 编码</label><select id="encoding" aria-label="TXT 编码"><option value="utf-8">UTF-8</option><option value="gb18030">GB18030</option></select><button id="import-button" class="primary">＋ 导入 TXT</button><input id="file-input" type="file" accept=".txt,text/plain" hidden></div>
+    </header>
+    <section class="reading-header"><div><span class="eyebrow">A LITTLE TIME FOR READING</span><h1 id="book-title">把世界调慢一页。</h1><p id="book-meta">一本书，一段安静的时光。</p></div><div class="appearance"><span class="setting-label">字号</span><button id="font-down" aria-label="减小字号">A−</button><output id="font-size" aria-label="当前字号">20</output><button id="font-up" aria-label="增大字号">A＋</button><span class="divider"></span><button id="theme-toggle" aria-label="切换深色主题" aria-pressed="false">☾ 深色</button></div></section>
+    <div id="reader" class="reader" tabindex="0" aria-label="正文阅读区域">
+      <section id="welcome" class="welcome"><div class="book-illustration" aria-hidden="true"><span>一</span><span>页</span></div><span class="eyebrow">YOUR NEXT CHAPTER STARTS HERE</span><h2>好故事，值得慢慢读。</h2><p>导入电脑里的 TXT 电子书。<br>调整到舒服的字号，让阅读从这里继续。</p><button id="welcome-import" class="primary">导入第一本书 <span>↗</span></button><div class="welcome-notes"><span>UTF-8 / GB18030</span><span>自动记住阅读位置</span><span>单本 ≤ 5 MiB</span></div></section>
+      <article id="content" class="content" hidden></article>
+    </div>
+    <footer class="statusbar"><div class="status-message"><span class="local-dot"></span><span id="status" role="status" aria-live="polite">准备好开始阅读</span><button id="retry-save" hidden>重试保存</button></div><div id="progress-label">尚未打开书籍</div></footer><div class="progress-track"><div id="progress-bar"></div></div>
+  </main>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
