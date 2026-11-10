@@ -1,4 +1,66 @@
 import { test, expect } from '@playwright/test';
+test('书名、前后文与连续追问', async ({page}) => {
+  const requests = [];
+  await page.route('**/api/explain', route => { requests.push(route.request().postDataJSON()); return route.fulfill({json:{answer:'可能指乙，依据是前文甲遇见乙。'}}); });
+  await page.goto('/');
+  await upload(page, '第一本.txt', '甲遇见乙。\n甲说他来了。\n后来乙揭晓秘密。');
+  const select = () => page.locator('#content p').nth(1).evaluate(el => { const r = document.createRange(); r.selectNodeContents(el); const s = window.getSelection(); s.removeAllRanges(); s.addRange(r); });
+  await select();
+  await page.getByRole('button', {name:'✦ AI 解释'}).click();
+  await expect(page.locator('#ai-answer')).toContainText('可能指乙');
+  expect(requests[0].title).toBe('第一本');
+  expect(requests[0].context.excerpts[0].text).toContain('甲遇见乙');
+  expect(JSON.stringify(requests[0])).not.toContain('后来乙揭晓秘密');
+  await page.locator('#ai-question').fill('他是谁？');
+  await page.getByRole('button', {name:'发送', exact:true}).click();
+  await expect(page.locator('#ai-chat')).toContainText('他是谁？');
+  expect(requests[1].history.at(-1)).toEqual({role:'user', content:'他是谁？'});
+  await page.locator('#ai-spoilers').check();
+  await expect(page.locator('#ai-chat')).toBeEmpty();
+  await select();
+  await page.getByRole('button', {name:'✦ AI 解释'}).click();
+  await expect.poll(() => requests.length).toBe(3);
+  expect(JSON.stringify(requests[2].context)).toContain('后来乙揭晓秘密');
+  await page.reload();
+  await expect(page.locator('#ai-chat')).toBeEmpty();
+});
+test('选文解释、失败重试、边界和会话清理', async ({page}) => {
+  const requests = [];
+  await page.route('**/api/explain', async route => {
+    requests.push(route.request().postDataJSON());
+    if (requests.length === 1) await route.fulfill({status: 502, json: {error:'测试网络失败'}});
+    else await route.fulfill({json: {answer:'依据选文，这句话描写了窗外。'}});
+  });
+  await page.goto('/');
+  await upload(page, '小说.txt');
+  await page.getByRole('button', {name:'✦ AI 解释'}).click();
+  await expect(page.locator('#ai-answer')).toContainText('请先在正文');
+  await page.getByRole('button', {name:'关闭 AI 面板'}).click();
+  await page.locator('#reader').evaluate(el => el.scrollTop = 1800);
+  await page.waitForTimeout(700);
+  const position = () => page.evaluate(async () => { const {ReaderView} = await import('/js/ReaderView.js'); return new ReaderView().capturePosition().position.index; });
+  const before = await position();
+  await page.locator('#content p').nth(20).evaluate(el => {
+    const range = document.createRange(); range.setStart(el.firstChild, 0); range.setEnd(el.firstChild, 8);
+    const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+  });
+  await page.getByRole('button', {name:'✦ AI 解释'}).click();
+  await expect(page.locator('#ai-selection')).toHaveText('第11段：窗外的');
+  await expect(page.locator('#ai-answer')).toContainText('测试网络失败');
+  await page.getByRole('button', {name:'重试', exact:true}).click();
+  await expect(page.locator('#ai-answer')).toContainText('依据选文');
+  expect(requests.map(item => item.text)).toEqual(['第11段：窗外的', '第11段：窗外的']);
+  await expect.poll(async () => Math.abs(await position() - before)).toBeLessThanOrEqual(1);
+  await page.reload();
+  await expect(page.locator('#ai-panel')).toBeHidden();
+  await expect(page.locator('#ai-selection')).toBeEmpty();
+  await page.locator('#content').evaluate(el => { const range = document.createRange(); range.selectNodeContents(el); const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range); });
+  await page.getByRole('button', {name:'✦ AI 解释'}).click();
+  await expect(page.locator('#ai-answer')).toContainText('超过 2000');
+  await upload(page, '第二本.txt');
+  await expect(page.locator('#ai-panel')).toBeHidden();
+  await expect(page.locator('#ai-selection')).toBeEmpty();
+});
 const text = Array.from({length: 150}, (_, i) => `第${i + 1}段：窗外的风翻过书页。我们沿着河流散步，把今天的故事写在纸上。中文阅读测试，English 123。`).join('\n\n');
 const upload = async (page, name, content = text) => {
   await page.locator('#file-input').setInputFiles({name, mimeType:'text/plain', buffer:Buffer.from(content)});

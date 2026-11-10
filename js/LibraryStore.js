@@ -4,10 +4,11 @@ import { Book } from './Book.js';
 export class LibraryStore {
   async open() {
     this.db = await new Promise((resolve, reject) => {
-      const request = indexedDB.open('one-page-reader', 1);
+      const request = indexedDB.open('one-page-reader', 2);
       request.onupgradeneeded = () => {
-        request.result.createObjectStore('books', { keyPath: 'id' });
-        request.result.createObjectStore('meta');
+        if (!request.result.objectStoreNames.contains('books')) request.result.createObjectStore('books', { keyPath: 'id' });
+        if (!request.result.objectStoreNames.contains('meta')) request.result.createObjectStore('meta');
+        if (!request.result.objectStoreNames.contains('analysis')) request.result.createObjectStore('analysis', { keyPath: 'bookId' });
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
@@ -17,7 +18,7 @@ export class LibraryStore {
   }
   transaction(action) {
     return new Promise((resolve, reject) => {
-      const tx = this.db.transaction(['books', 'meta'], 'readwrite');
+      const tx = this.db.transaction(['books', 'meta', 'analysis'], 'readwrite');
       tx.oncomplete = () => resolve();
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error || new Error('保存被中断'));
@@ -44,7 +45,10 @@ export class LibraryStore {
   remove(id, currentId) {
     return this.transaction(tx => {
       tx.objectStore('books').delete(id);
+      tx.objectStore('analysis').delete(id);
       tx.objectStore('meta').put(currentId || null, 'lastId');
     });
   }
+  saveAnalysis(analysis) { return this.transaction(tx => tx.objectStore('analysis').put(analysis)); }
+  loadAnalysis(id) { return this.read('analysis', id); }
 }

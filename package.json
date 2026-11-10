@@ -3,11 +3,16 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/core.test.js",
+    "test": "node --test tests/core.test.js tests/ai.test.js tests/cloud-auth.test.js tests/cloud-store.test.js tests/cloud-pending.test.js tests/cloud-progress.test.js",
     "test:browser": "playwright test",
     "start": "node server.js"
   },
   "devDependencies": {
-    "@playwright/test": "^1.65.0"
+    "@playwright/test": "^1.65.0",
+    "fake-indexeddb": "^6.2.8"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "esbuild": "^0.28.2"
   }
 }
