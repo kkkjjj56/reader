@@ -1,3 +1,14 @@
 node_modules/
 test-results/
 *.log
+public/
+.vercel/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.txt
+!samples/
+!samples/河边散记-UTF8.txt
+!samples/山间来信-GB18030.txt

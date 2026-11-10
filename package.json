@@ -3,9 +3,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/core.test.js tests/ai.test.js tests/cloud-auth.test.js tests/cloud-store.test.js tests/cloud-pending.test.js tests/cloud-progress.test.js",
+    "test": "node --test tests/core.test.js tests/ai.test.js tests/cloud-auth.test.js tests/cloud-store.test.js tests/cloud-pending.test.js tests/cloud-progress.test.js tests/vercel.test.js",
     "test:browser": "playwright test",
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "node scripts/build-static.js"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",

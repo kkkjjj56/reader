@@ -1,6 +1,7 @@
 import { createClient } from './supabase-client.js';
 import { CloudAuth } from './CloudAuth.js';
 import { CloudLibraryStore } from './CloudLibraryStore.js';
+import { publicConfig } from './public-config.js';
 
 export function setupCloud(app) {
   const dialog = document.createElement('dialog'); dialog.className='cloud-dialog';
@@ -39,10 +40,5 @@ export function setupCloud(app) {
   }catch(e){fail(e);}};
   const entry=document.querySelector('.cloud-demo-entry');entry.href='#';entry.textContent='☁ 云端书架';entry.onclick=e=>{e.preventDefault();message('');setView();dialog.showModal();};
   const local=document.createElement('button');local.className='cloud-local-switch';local.textContent='切换到本地书架';entry.after(local);local.onclick=async()=>{try{await switchStore(app.localStore,false);}catch(e){app.view.message(e.message,true);}};
-  try {const config=JSON.parse(localStorage.getItem('reader-cloud-config')||'null');if(config)configure(config.url,config.key);} catch { message('公开配置无效，请重新填写。'); }
+  try {const config=publicConfig.url ? publicConfig : JSON.parse(localStorage.getItem('reader-cloud-config')||'null');if(config)configure(config.url,config.key);} catch { message('公开配置无效，请重新填写。'); }
 }
-
-
-
-
-

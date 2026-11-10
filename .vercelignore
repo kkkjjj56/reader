@@ -1,0 +1,10 @@
+.git/
+.github/
+.vercel/
+node_modules/
+test-results/
+.env*
+*.log
+*.pem
+*.key
+**/*.txt

@@ -1,0 +1,14 @@
+import {mkdir,copyFile,rm,writeFile} from 'node:fs/promises';
+import path from 'node:path';
+const output=path.resolve('public');
+const url=process.env.SUPABASE_URL || '';
+const key=process.env.SUPABASE_PUBLISHABLE_KEY || '';
+if (!!url !== !!key) throw new Error('请同时配置 SUPABASE_URL 和 SUPABASE_PUBLISHABLE_KEY。');
+if (url && !/^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i.test(url)) throw new Error('SUPABASE_URL 格式无效。');
+if (key && !/^sb_publishable_[A-Za-z0-9_-]+$/.test(key)) throw new Error('构建配置仅接受 sb_publishable_ 公开密钥。');
+await rm(output,{recursive:true,force:true});
+await mkdir(path.join(output,'js'),{recursive:true});
+const assets=['index.html','styles.css','js/main.js','js/Book.js','js/BookAnalysis.js','js/TxtImporter.js','js/LibraryStore.js','js/ReaderSettings.js','js/ReaderView.js','js/ReaderApp.js','js/CloudAuth.js','js/CloudLibraryStore.js','js/CloudPendingStore.js','js/CloudProgressQueue.js','js/CloudUI.js','js/supabase-client.js'];
+for (const file of assets) await copyFile(file,path.join(output,file));
+await writeFile(path.join(output,'js/public-config.js'),`export const publicConfig = ${JSON.stringify({url,key})};\n`);
+console.log(`静态文件准备完成：${assets.length + 1} 个文件。`);

@@ -8,7 +8,7 @@ import { buildContext } from '../js/BookAnalysis.js';
 test('缺少密钥时不发出请求', async () => {
   const result = await explainText('选文', '', () => { throw new Error('不应调用'); });
   assert.equal(result.status, 503);
-  assert.match(result.error, /未配置/);
+  assert.match(result.error, /API Key/);
 });
 test('默认排除后文，允许剧透时可使用后文', () => {
   const text = '甲说他来了。秘密在后面揭晓。';
@@ -57,8 +57,8 @@ test('本机接口校验来源、内容和缺失密钥', async () => {
       request.on('error', reject); request.end(JSON.stringify(body));
     });
     const missing = await send({text:'一段选文'});
-    assert.equal(missing.status, 503);
-    assert.match((await missing.json()).error, /未配置/);
+    assert.equal(missing.status, 400);
+    assert.match((await missing.json()).error, /API Key/);
     assert.equal((await send({text:'一段选文'}, {Origin:'http://evil.example'})).status, 403);
     let receivedKey;
     globalThis.fetch = async (_url, options) => { receivedKey = options.headers.Authorization; return {ok:true, json:async () => ({choices:[{message:{content:'解释'}}]})}; };
