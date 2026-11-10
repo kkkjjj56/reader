@@ -29,16 +29,15 @@ npm run build
 
 ## 预览部署步骤
 
-1. 先检查 `git status`、待提交差异和 `git ls-files`；确认没有密码、私钥、环境变量、个人书籍或其他不应上传的内容。当前仓库两份 `samples` 是项目自编样本，静态构建不发布样本。
-2. 将经过检查的改动提交到预览分支并推送 GitHub；不要先更新当前生产分支 `master`。在 [Vercel Dashboard](https://vercel.com/dashboard) 登录或注册，选择 Add New → Project，连接 GitHub，选择 `kkkjjj56/reader`。仓库为私有，GitHub 授权弹窗由项目所有者本人完成。
-3. Framework Preset 选择 Other，根目录为仓库根目录。项目配置使用 `npm run build` 和 `public` 输出目录（`vercel.json` 已指定）；确认 Node.js 版本满足 20 或更新版本。确认生产分支及部署保护策略；尚未准备公开访问时启用 Vercel 的预览访问保护或采取其他限制访问措施，具体可用功能以当前套餐为准。
-4. 若想让访问者免填云项目配置，在 Vercel 的 Project Settings → Environment Variables 中为 Preview 和之后批准的 Production 分别配置公开的 `SUPABASE_URL`、`SUPABASE_PUBLISHABLE_KEY`。如果不配置这两项，可在网页填写公开配置。修改变量后需要重新部署才能写入构建产物。任何密钥以 `sb_secret_` 开头或标为 `service_role` 均不能填入这两个变量。
-5. 按 Vercel 的流程部署预览分支。使用 Vercel 显示的预览地址，先验证页面可打开、浏览器未配置公开信息时的操作，再用测试账号、自编 TXT 验证书架、跨账号隔离、上传下载、删除、进度与断网恢复。AI 先用模拟服务或测试环境，真实密钥仅由持有者在页面中输入；不要把凭据发送给协作者。免费预览若有身份保护，其他设备可能需要授权访问。
-6. 两台设备或两个浏览器登录同一测试账号检查进度，使用第二个测试账号尝试读取、下载、删除第一账号的书籍及进度。对云书选文进行 AI 解释时先验证选文范围；实际模型响应、网络、流量、费用及权限均需单独记录。
+1. 当前适配已提交并推送到私有仓库的 `codex/vercel-preview` 分支，尚未合并到生产分支 `master`。在此分支的项目目录打开 PowerShell。首次可执行 `npx vercel login`，按终端给出的提示在浏览器登录本人账号；不要将登录验证码、令牌或密码发送到聊天里。
+2. 执行 `npx vercel deploy`，按提示选择自己的 Vercel 账号或团队，创建并关联项目，项目根目录使用当前文件夹。确认这是 Preview 部署，命令中不要添加 `--prod`。`vercel.json` 指定构建命令和 `public` 输出目录；构建阶段可能等待安装 CLI 和依赖。终端给出的预览网址可用于下一步测试。若 Vercel 项目已有同名项目，先核对归属和已有配置。
+3. 默认无需配置任何环境变量。预览网页第一次使用云书架时，在网页中填写 Supabase 项目 URL 和 Publishable key（`sb_publishable_`），这两项为公开配置。若想让其他读者免填，可在 Vercel Project Settings → Environment Variables 为 Preview 添加公开的 `SUPABASE_URL` 与 `SUPABASE_PUBLISHABLE_KEY` 并重新部署。Vercel 不需要 DeepSeek Key、service_role、secret key 或数据库密码。
+4. 用两个测试账号和自编 TXT 验证注册登录、书架、跨账号隔离、上传下载、删除、进度和断网重试；另一台设备用相同预览网址及测试账号复核。AI 先以模拟响应测试；真实密钥只能由持有者在阅读器页面输入，可能产生费用。预览若启用了 Vercel Authentication，另一台设备可能需要相应访问权限。
+5. 本地地址和 Vercel 预览网址的本地书架彼此独立；不要自动迁移。预览和生产网址也各有独立本地书架。云书架依赖相同 Supabase 项目和账号。
 
 ## 测试完成后的上线和更新
 
-先复核预览结果、安全限制和当前 Supabase 项目是否适合对外使用。用户明确确认上线后，再按项目设置将已验证的改动合并到生产分支，或者使用 Vercel 支持的分阶段生产发布方式；不要把预览 URL 是否可访问当成生产已上线。Git 连接后，后续推送到生产分支会触发生产构建，其他分支一般生成预览部署。查看 Vercel Deployments 中的状态与实际提交，失败时查看构建日志且不要在日志中输出密钥。不同网址的本地书架互相独立，云端书架依赖同一 Supabase 项目和账号。
+先复核预览结果、安全限制和当前 Supabase 项目是否适合对外使用。用户明确确认上线后，再按项目设置将已验证的改动合并到生产分支，或者使用 Vercel 支持的分阶段生产发布方式；不要把预览 URL 是否可访问当成生产已上线。在 Vercel Project Settings → Git 连接 GitHub 仓库后，后续推送到生产分支通常会触发生产构建，其他分支通常生成预览部署；连接或改变生产分支前先检查是否会触发部署。查看 Vercel Deployments 中的状态与实际提交，失败时查看构建日志且不要在日志中输出密钥。不同网址的本地书架互相独立，云端书架依赖同一 Supabase 项目和账号。
 
 ## 测试记录
 
