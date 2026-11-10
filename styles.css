@@ -9,3 +9,7 @@ body[data-theme="dark"]{color-scheme:dark;--bg:#20251f;--paper:#2d352a;--side:#2
 .reader .appearance{position:sticky;top:0;z-index:1;justify-content:flex-end;align-self:auto;padding:6px 48px;background:var(--bg);border-bottom:1px solid var(--line)}
 @media(max-width:1100px){.reader .appearance{padding:6px 28px}}
 @media(max-width:700px){.reader .appearance{justify-content:flex-start;padding:6px 20px}}
+
+/* 正文随阅读区域伸展，边缘留出少量阅读间距。 */
+.content{max-width:none;width:100%;margin:0;padding-left:24px;padding-right:24px}
+@media(max-width:700px){.content{padding-left:16px;padding-right:16px}}
