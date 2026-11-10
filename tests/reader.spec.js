@@ -10,9 +10,14 @@ test('多书独立位置、刷新、删除与纯文本', async ({page}) => {
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
   await expect(page.locator('#welcome')).toBeVisible();
+  await expect(page.getByRole('group', {name:'阅读设置'})).toBeHidden();
   await upload(page, '河边散记.txt');
+  await expect(page.locator('#reader').getByRole('group', {name:'阅读设置'})).toBeVisible();
   await page.locator('#reader').evaluate(el => el.scrollTop = 2500);
   await page.waitForTimeout(800);
+  const toolbarTop = await page.locator('#reading-controls').evaluate(el => el.getBoundingClientRect().top);
+  const readerTop = await page.locator('#reader').evaluate(el => el.getBoundingClientRect().top);
+  expect(Math.abs(toolbarTop - readerTop)).toBeLessThan(2);
   const original = await page.locator('#reader').evaluate(el => el.scrollTop);
   await upload(page, '另一段旅程.txt', text + '\n<script>window.injected=true</script>');
   await page.locator('#reader').evaluate(el => el.scrollTop = 700);
@@ -32,6 +37,7 @@ test('多书独立位置、刷新、删除与纯文本', async ({page}) => {
   await page.getByRole('button', {name:'删除《另一段旅程》', exact:true}).click();
   await expect(page.locator('.book-card')).toHaveCount(1);
   await expect(page.locator('#welcome')).toBeVisible();
+  await expect(page.getByRole('group', {name:'阅读设置'})).toBeHidden();
   await page.reload();
   await expect(page.locator('.book-card')).toHaveCount(1);
   expect(errors).toEqual([]);

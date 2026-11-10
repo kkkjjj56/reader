@@ -4,3 +4,8 @@
 body[data-theme="dark"]{color-scheme:dark;--bg:#20251f;--paper:#2d352a;--side:#252d23;--text:#dce2d4;--muted:#a1ac98;--line:#3b4536;--accent:#7c986b;--soft:#36452f;--hover:#35412e}
 @media(max-width:1100px){.sidebar{width:228px;padding-left:12px;padding-right:12px}.toolbar{padding:0 22px}.reading-header{padding:24px 28px;align-items:flex-start;flex-direction:column;gap:16px}.appearance{align-self:flex-end}.content{padding:30px 36px 80px}.welcome h2{font-size:27px}}
 @media(max-width:700px){.sidebar{position:absolute;inset:82px auto 45px 0;z-index:2;width:240px;box-shadow:8px 0 20px #0002}.brand{display:none}.shelf-heading{margin-top:24px}.toolbar{padding:0 12px;gap:8px}.breadcrumb{display:none}.import-tools{margin-left:auto}.reading-header{padding:20px;gap:10px}.appearance{align-self:flex-start}.welcome-notes{gap:10px;font-size:8px}.content{padding:24px 22px 70px}.statusbar{padding:0 12px}h1{font-size:23px}.welcome h2{font-size:24px}}
+
+/* 阅读设置随正文区域滚动时保持可见。 */
+.reader .appearance{position:sticky;top:0;z-index:1;justify-content:flex-end;align-self:auto;padding:6px 48px;background:var(--bg);border-bottom:1px solid var(--line)}
+@media(max-width:1100px){.reader .appearance{padding:6px 28px}}
+@media(max-width:700px){.reader .appearance{justify-content:flex-start;padding:6px 20px}}

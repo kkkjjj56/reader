@@ -6,6 +6,7 @@ export class ReaderView {
     this.content.replaceChildren();
     this.content.hidden = !book;
     this.welcome.hidden = Boolean(book);
+    document.getElementById('reading-controls').hidden = !book;
     document.getElementById('book-title').textContent = book?.title || '把世界调慢一页。';
     document.getElementById('toolbar-title').textContent = book?.title || '开始阅读';
     document.getElementById('book-meta').textContent = book ? `${book.encoding.toUpperCase()} · ${book.paragraphs.join('\n').length.toLocaleString()} 字符` : '一本书，一段安静的时光。';
@@ -60,7 +61,8 @@ export class ReaderView {
   capturePosition() {
     const children = this.content.children;
     if (!children.length) return { position: { index: 0, ratio: 0 }, progress: 0 };
-    const top = this.reader.scrollTop;
+    // 工具栏固定在阅读区顶部，记录它下方实际看到的段落。
+    const top = this.reader.scrollTop + document.getElementById('reading-controls').offsetHeight;
     let low = 0, high = children.length - 1;
     while (low < high) {
       const mid = Math.ceil((low + high) / 2);
@@ -73,7 +75,7 @@ export class ReaderView {
   }
   restorePosition(position) {
     const paragraph = this.content.children[position.index];
-    if (paragraph) this.reader.scrollTop = paragraph.offsetTop + paragraph.offsetHeight * position.ratio;
+    if (paragraph) this.reader.scrollTop = paragraph.offsetTop + paragraph.offsetHeight * position.ratio - document.getElementById('reading-controls').offsetHeight;
   }
   busy(value) {
     for (const element of document.querySelectorAll('#import-button, #welcome-import, #encoding, .open-book, .delete-book, #retry-save')) element.disabled = value;
