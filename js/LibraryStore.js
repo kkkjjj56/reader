@@ -35,10 +35,10 @@ export class LibraryStore {
     const [records, lastId] = await Promise.all([this.read('books'), this.read('meta', 'lastId')]);
     return { books: records.map(record => new Book(record)), lastId };
   }
-  save(book) {
+  save(book, markRecent = true) {
     return this.transaction(tx => {
       tx.objectStore('books').put(structuredClone(book));
-      tx.objectStore('meta').put(book.id, 'lastId');
+      if (markRecent) tx.objectStore('meta').put(book.id, 'lastId');
     });
   }
   remove(id, currentId) {

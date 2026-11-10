@@ -15,6 +15,7 @@ export class ReaderApp {
     this.saving = Promise.resolve();
     this.restoring = false;
     this.working = false;
+    this.libraryLoaded = false;
   }
   async start() {
     this.view.applySettings(this.settings);
@@ -26,6 +27,7 @@ export class ReaderApp {
       await this.store.open();
       const { books, lastId } = await this.store.load();
       this.books = books;
+      this.libraryLoaded = true;
       this.renderShelf();
       const book = books.find(item => item.id === lastId);
       if (book) await this.openBook(book);
@@ -65,12 +67,20 @@ export class ReaderApp {
     });
     document.getElementById('retry-save').onclick = () => this.run(async () => {
       if (!this.store.db) await this.store.open();
-      if (this.pendingDelete) await this.finishDelete(...this.pendingDelete);
-      for (const book of this.books.filter(item => item !== this.current)) {
-        await this.store.save(book);
+      if (!this.libraryLoaded) {
+        const { books } = await this.store.load();
+        const currentIds = new Set(this.books.map(book => book.id));
+        this.books.unshift(...books.filter(book => !currentIds.has(book.id)));
+        this.libraryLoaded = true;
+        this.renderShelf();
+      }
+      if (this.pendingDelete) await this.finishDelete(this.pendingDelete);
+      for (const book of this.books.filter(item => item !== this.current && this.unsaved.has(item.id))) {
+        await this.store.save(book, false);
         this.unsaved.delete(book.id);
       }
-      await this.persist();
+      if (this.current) await this.persist();
+      else this.reportSaveState();
     });
     document.addEventListener('visibilitychange', () => { if (document.hidden) this.flush(); });
     for (const [id, delta] of [['font-down', -2], ['font-up', 2]]) {
@@ -158,11 +168,10 @@ export class ReaderApp {
     // 按顺序保存快照，避免快速切书时旧写入覆盖新位置。
     this.saving = this.saving.then(async () => {
       try {
+        if (!this.libraryLoaded) throw new Error('书架尚未读取');
         await this.store.save(book);
         this.unsaved.delete(book.id);
-        const pending = this.pendingDelete || this.unsaved.size > 0;
-        this.view.message(pending ? '当前进度已保存，仍有操作未保存，请重试。' : '已保存 · 阅读进度保存在此浏览器', Boolean(pending));
-        document.getElementById('retry-save').hidden = !pending;
+        this.reportSaveState();
         this.renderShelf();
       } catch {
         this.unsaved.add(book.id);
@@ -172,23 +181,28 @@ export class ReaderApp {
     });
     return this.saving;
   }
+  reportSaveState() {
+    const failed = Boolean(this.pendingDelete) || this.unsaved.size > 0;
+    const waiting = Boolean(this.timer);
+    this.view.message(failed ? '仍有操作未保存，请重试。' : waiting ? '阅读位置待保存…' : '已保存 · 阅读进度保存在此浏览器', failed);
+    document.getElementById('retry-save').hidden = !failed;
+  }
   async deleteBook(id) {
     const book = this.books.find(item => item.id === id);
     if (!book || !confirm(`删除《${book.title}》？正文和阅读位置将从此浏览器移除，原 TXT 文件仍保留。`)) return;
     await this.flush();
-    const currentId = this.current?.id === id ? null : this.current?.id;
-    this.pendingDelete = [id, currentId];
-    try { await this.finishDelete(id, currentId); }
+    this.pendingDelete = id;
+    try { await this.finishDelete(id); }
     catch { this.view.message('删除失败，书籍仍保留，请重试保存或稍后再试。', true); document.getElementById('retry-save').hidden = false; }
   }
-  async finishDelete(id, currentId) {
-    await this.store.remove(id, currentId);
+  async finishDelete(id) {
+    await this.store.remove(id, this.current?.id === id ? null : this.current?.id);
     this.books = this.books.filter(item => item.id !== id);
     this.unsaved.delete(id);
     if (this.current?.id === id) { this.current = null; this.view.showBook(null); }
     this.pendingDelete = null;
-    document.getElementById('retry-save').hidden = true;
     this.renderShelf();
-    this.view.message('书籍已从书架删除');
+    if (this.unsaved.size) this.reportSaveState();
+    else { document.getElementById('retry-save').hidden = true; this.view.message('书籍已从书架删除'); }
   }
 }

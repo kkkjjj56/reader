@@ -71,11 +71,11 @@ export class ReaderView {
     }
     const paragraph = children[low];
     const max = this.reader.scrollHeight - this.reader.clientHeight;
-    return { position: { index: low, ratio: Math.max(0, Math.min(1, (top - paragraph.offsetTop) / paragraph.offsetHeight)) }, progress: max > 0 ? Math.min(100, top / max * 100) : 100 };
+    return { position: { index: low, ratio: Math.max(0, Math.min(1, (top - paragraph.offsetTop) / paragraph.offsetHeight)) }, progress: max > 0 ? Math.min(100, Math.max(0, this.reader.scrollTop / max * 100)) : 100 };
   }
   restorePosition(position) {
     const paragraph = this.content.children[position.index];
-    if (paragraph) this.reader.scrollTop = paragraph.offsetTop + paragraph.offsetHeight * position.ratio - document.getElementById('reading-controls').offsetHeight;
+    if (paragraph) this.reader.scrollTop = position.index === 0 && position.ratio === 0 ? 0 : paragraph.offsetTop + paragraph.offsetHeight * position.ratio - document.getElementById('reading-controls').offsetHeight;
   }
   busy(value) {
     for (const element of document.querySelectorAll('#import-button, #welcome-import, #encoding, .open-book, .delete-book, #retry-save')) element.disabled = value;

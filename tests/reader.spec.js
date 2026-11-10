@@ -123,3 +123,90 @@ test('存储失败保留正文、可重试，损坏设置回退', async ({page})
   await page.reload();
   await expect(page.locator('#book-title')).toHaveText('失败重试');
 });
+
+test('阅读进度从零开始，到底后为百分之百', async ({page}) => {
+  await page.goto('/');
+  await upload(page, '进度.txt');
+  await expect(page.locator('#progress-label')).toHaveText('阅读进度 0%');
+  await page.locator('#reader').evaluate(el => el.scrollTop = el.scrollHeight);
+  await expect(page.locator('#progress-label')).toHaveText('阅读进度 100%');
+  await expect(page.locator('#status')).toContainText('已保存');
+  await page.reload();
+  await expect(page.locator('#progress-label')).toHaveText('阅读进度 100%');
+});
+
+test('其他书未保存时删除当前书，仍可重试保存', async ({page}) => {
+  await page.goto('/');
+  await page.evaluate(async () => {
+    const {LibraryStore} = await import('/js/LibraryStore.js');
+    const original = LibraryStore.prototype.save;
+    LibraryStore.prototype.save = function(book, ...args) {
+      return book.title === '未保存' ? Promise.reject(new Error('测试存储失败')) : original.call(this, book, ...args);
+    };
+    window.restoreSave = () => { LibraryStore.prototype.save = original; };
+  });
+  await page.locator('#file-input').setInputFiles({name:'未保存.txt',mimeType:'text/plain',buffer:Buffer.from(text)});
+  await expect(page.locator('#status')).toContainText('未保存');
+  await page.locator('#file-input').setInputFiles({name:'已保存.txt',mimeType:'text/plain',buffer:Buffer.from(text)});
+  await expect(page.locator('#book-title')).toHaveText('已保存');
+  await expect(page.getByRole('button',{name:'重试保存'})).toBeVisible();
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button',{name:'删除《已保存》'}).click();
+  await expect(page.locator('#welcome')).toBeVisible();
+  await expect(page.getByRole('button',{name:'重试保存'})).toBeVisible();
+  await page.evaluate(() => window.restoreSave());
+  await page.getByRole('button',{name:'重试保存'}).click();
+  await expect(page.locator('#status')).toContainText('已保存');
+  await page.reload();
+  await expect(page.getByRole('button',{name:'未保存', exact:true})).toBeVisible();
+  await expect(page.locator('#welcome')).toBeVisible();
+});
+
+test('删除失败后换书，重试删除保留当前阅读的书', async ({page}) => {
+  await page.goto('/');
+  await upload(page, '第一本.txt');
+  await upload(page, '第二本.txt');
+  await page.evaluate(async () => {
+    const {LibraryStore} = await import('/js/LibraryStore.js');
+    const original = LibraryStore.prototype.remove;
+    LibraryStore.prototype.remove = () => Promise.reject(new Error('测试删除失败'));
+    window.restoreRemove = () => { LibraryStore.prototype.remove = original; };
+  });
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button',{name:'删除《第二本》'}).click();
+  await expect(page.locator('#status')).toContainText('删除失败');
+  await page.getByRole('button',{name:'第一本', exact:true}).click();
+  await expect(page.locator('#book-title')).toHaveText('第一本');
+  await page.evaluate(() => window.restoreRemove());
+  await page.getByRole('button',{name:'重试保存'}).click();
+  await expect(page.locator('.book-card')).toHaveCount(1);
+  await page.reload();
+  await expect(page.locator('#book-title')).toHaveText('第一本');
+});
+
+test('启动时书架读取失败，重试后合并已有书籍', async ({page}) => {
+  await page.goto('/');
+  await upload(page, '原有书籍.txt');
+  await page.evaluate(() => sessionStorage.setItem('simulate-open-failure', 'yes'));
+  await page.addInitScript(() => {
+    if (sessionStorage.getItem('simulate-open-failure') !== 'yes') return;
+    sessionStorage.removeItem('simulate-open-failure');
+    const originalOpen = indexedDB.open.bind(indexedDB);
+    indexedDB.open = (...args) => {
+      indexedDB.open = originalOpen;
+      const request = { error: new Error('测试数据库暂时不可用') };
+      setTimeout(() => request.onerror?.(), 0);
+      return request;
+    };
+  });
+  await page.reload();
+  await expect(page.locator('#status')).toContainText('无法读取');
+  await page.locator('#file-input').setInputFiles({name:'新书.txt',mimeType:'text/plain',buffer:Buffer.from(text)});
+  await expect(page.locator('#status')).toContainText('未保存');
+  await page.getByRole('button',{name:'重试保存'}).click();
+  await expect(page.locator('.book-card')).toHaveCount(2);
+  await expect(page.locator('#status')).toContainText('已保存');
+  await page.reload();
+  await expect(page.locator('.book-card')).toHaveCount(2);
+  await expect(page.locator('#book-title')).toHaveText('新书');
+});
