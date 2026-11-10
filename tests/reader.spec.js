@@ -1,0 +1,38 @@
+import { test, expect } from '@playwright/test';
+const text = Array.from({length: 150}, (_, i) => `第${i + 1}段：窗外的风翻过书页。我们沿着河流散步，把今天的故事写在纸上。中文阅读测试，English 123。`).join('\n\n');
+const upload = async (page, name, content = text) => {
+  await page.locator('#file-input').setInputFiles({name, mimeType:'text/plain', buffer:Buffer.from(content)});
+  await expect(page.locator('#book-title')).toHaveText(name.replace(/\.txt$/, ''));
+  await expect(page.locator('#status')).toContainText('已保存');
+};
+test('多书独立位置、刷新、删除与纯文本', async ({page}) => {
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  await expect(page.locator('#welcome')).toBeVisible();
+  await upload(page, '河边散记.txt');
+  await page.locator('#reader').evaluate(el => el.scrollTop = 2500);
+  await page.waitForTimeout(800);
+  const original = await page.locator('#reader').evaluate(el => el.scrollTop);
+  await upload(page, '另一段旅程.txt', text + '\n<script>window.injected=true</script>');
+  await page.locator('#reader').evaluate(el => el.scrollTop = 700);
+  await page.waitForTimeout(800);
+  await page.getByRole('button', {name:'河边散记', exact:true}).click();
+  await expect.poll(() => page.locator('#reader').evaluate(el => el.scrollTop)).toBeCloseTo(original, -1);
+  await page.reload();
+  await expect(page.locator('#book-title')).toHaveText('河边散记');
+  await expect.poll(() => page.locator('#reader').evaluate(el => el.scrollTop)).toBeCloseTo(original, -1);
+  await page.getByRole('button', {name:'另一段旅程', exact:true}).click();
+  await expect(page.locator('#content')).toContainText('<script>window.injected=true</script>');
+  expect(await page.evaluate(() => window.injected)).toBeUndefined();
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.getByRole('button', {name:'删除《另一段旅程》', exact:true}).click();
+  await expect(page.locator('.book-card')).toHaveCount(2);
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', {name:'删除《另一段旅程》', exact:true}).click();
+  await expect(page.locator('.book-card')).toHaveCount(1);
+  await expect(page.locator('#welcome')).toBeVisible();
+  await page.reload();
+  await expect(page.locator('.book-card')).toHaveCount(1);
+  expect(errors).toEqual([]);
+});

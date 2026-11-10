@@ -2,5 +2,11 @@
   "name": "leaf-reader",
   "private": true,
   "type": "module",
-  "scripts": { "test": "node --test", "start": "node server.js" }
+  "scripts": {
+    "test": "node --test",
+    "start": "node server.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0"
+  }
 }
